@@ -10,7 +10,9 @@ import java.util.HashMap;
 import java.util.PriorityQueue;
 
 class MyPanel extends JPanel implements ActionListener {
-
+    int x;
+    int y;
+    int pos;
     public MyPanel(LayoutManager layout) {
         super(layout);
         setFocusable(true);
@@ -19,6 +21,10 @@ class MyPanel extends JPanel implements ActionListener {
 
         Timer timer = new Timer(20, this);
         timer.start();
+        
+        x = 0;
+        y = 0;
+        pos = -1;
     }
 
     @Override
@@ -27,17 +33,43 @@ class MyPanel extends JPanel implements ActionListener {
         final int k = 25;
         g.setColor(new Color(190, 160, 160));
         g.fillRect(k, k, AStar.GRID_WIDTH * AStar.NODE_SPACE, AStar.GRID_HEIGHT * AStar.NODE_SPACE);
+        g.setColor(new Color(100, 100, 100, 150));
+        for (Rectangle o : AStar.obstacles) {
+            g.fillRect(o.x + k, o.y + k, o.width, o.height);
+        }
         if (AStar.finished) {
-            Node n = AStar.end;
-            g.setColor(new Color(100, 100, 100, 150));
-            for (Rectangle o : AStar.obstacles) {
-                g.fillRect(o.x + k, o.y + k, o.width, o.height);
-            }
+            ArrayList<Node> path = new ArrayList<Node>();
             g.setColor(new Color(255, 100, 0, 150));
+            Node n = AStar.end;
             g.fillRect((int) n.x + k, (int) n.y + k, AStar.NODE_SPACE, AStar.NODE_SPACE);
+            path.add(n);
             while (AStar.cameFrom.containsKey(n)) {
                 n = AStar.cameFrom.get(n);
                 g.fillRect((int) n.x + k, (int) n.y + k, AStar.NODE_SPACE, AStar.NODE_SPACE);
+                path.add(n);
+            }
+            if(pos == -1) {
+                pos = path.size()-1;
+            }
+            
+            double speed = 5;
+            g.setColor(new Color(150, 255, 150));
+            g.fillOval(x + k, y + k, AStar.NODE_SPACE, AStar.NODE_SPACE);
+            if(pos > 0) {
+                Node current = path.get(pos);
+                Node next = path.get(pos-1);
+                
+                double xv = (next.x - current.x);
+                double yv = (next.y - current.y);
+                double mag = Math.sqrt(Math.pow(xv, 2) + Math.pow(yv, 2));
+                xv *= speed/mag;
+                yv *= speed/mag;
+                x += xv;
+                y += yv;
+                
+                if(x >= next.x && y >= next.y) {
+                    pos--;
+                }
             }
         }
         Toolkit.getDefaultToolkit().sync();
@@ -138,15 +170,23 @@ public class AStar {
         }
         return true;
     }
-
+    private static Rectangle generateRandRect(int min, int max) {
+        int sw = GRID_WIDTH*NODE_SPACE;
+        int sh = GRID_HEIGHT*NODE_SPACE;
+        int x = (int)(Math.random()*(sw-min-(2*NODE_SPACE)))+NODE_SPACE;
+        int y = (int)(Math.random()*(sh-min-(2*NODE_SPACE)))+NODE_SPACE;
+        int w = (int)(Math.random()*(sw-x-NODE_SPACE));
+        int h = (int)(Math.random()*(sh-y-NODE_SPACE));
+        if(w > max) w = max;
+        if(h > max) h = max;
+        return new Rectangle(x, y, w, h);
+    }
     public static void main(String[] args) {
         obstacles = new ArrayList<Rectangle>();
-        obstacles.add(new Rectangle(350, 350, 100, 10));
-        obstacles.add(new Rectangle(350, 350, 10, 100));
-        obstacles.add(new Rectangle(300, 300, 180, 10));
-        obstacles.add(new Rectangle(300, 300, 10, 130));
-        obstacles.add(new Rectangle(250, 250, 100, 10));
-        obstacles.add(new Rectangle(250, 250, 10, 100));
+        obstacles.add(new Rectangle(50, 50, 30, 30));
+        for(int i = 0; i < 100; i++) {
+            obstacles.add(generateRandRect(5, 10));
+        }
         setupGUI();
         for (int i = 0; i < nodes.length; i++) {
             for (int j = 0; j < nodes[i].length; j++) {
@@ -190,7 +230,7 @@ public class AStar {
             int top = centerY - 1;
             int right = centerX + 1;
             int bottom = centerY + 1;
-            
+
             if(hasLeft) {
                 leftNode = nodes[centerY][left];
                 neighbors.add(leftNode);
@@ -223,7 +263,7 @@ public class AStar {
                 bottomLeftNode = nodes[bottom][left];
                 neighbors.add(bottomLeftNode);
             }
-            
+
             for (Node n : neighbors) {
                 for (Rectangle o : obstacles) {
                     if (isCol(o, n.toRect())) {
@@ -247,7 +287,7 @@ public class AStar {
                 bottomLeftNode.walkable = false;
                 bottomRightNode.walkable = false;
             }
-            
+
             //System.out.println("loop " + loop_ctr);
             //loop_ctr++;
             for (int i = 0; i < neighbors.size(); i++) {
