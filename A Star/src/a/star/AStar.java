@@ -16,7 +16,7 @@ class MyPanel extends JPanel implements ActionListener {
     public MyPanel(LayoutManager layout) {
         super(layout);
         setFocusable(true);
-        setBackground(new Color(220, 190, 190));
+        setBackground(Color.WHITE);
         setDoubleBuffered(true);
 
         Timer timer = new Timer(20, this);
@@ -31,15 +31,21 @@ class MyPanel extends JPanel implements ActionListener {
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
         final int k = 25;
-        g.setColor(new Color(190, 160, 160));
+        g.setColor(new Color(160, 160, 160));
         g.fillRect(k, k, AStar.GRID_WIDTH * AStar.NODE_SPACE, AStar.GRID_HEIGHT * AStar.NODE_SPACE);
         g.setColor(new Color(100, 100, 100, 150));
-        for (Rectangle o : AStar.obstacles) {
-            g.fillRect(o.x + k, o.y + k, o.width, o.height);
-        }
         if (AStar.finished) {
             ArrayList<Node> path = new ArrayList<Node>();
-            g.setColor(new Color(255, 100, 0, 150));
+            g.setColor(Color.WHITE);
+            for(int y = 0; y < AStar.nodes.length; y++) {
+                for(int x = 0; x < AStar.nodes[0].length; x++) {
+                    Node n = AStar.nodes[y][x];
+                    if(!n.walkable) {
+                        g.fillRect((int)n.x + k, (int)n.y + k, AStar.NODE_SPACE, AStar.NODE_SPACE);
+                    }
+                }
+            }
+            g.setColor(Color.BLACK);
             Node n = AStar.end;
             g.fillRect((int) n.x + k, (int) n.y + k, AStar.NODE_SPACE, AStar.NODE_SPACE);
             path.add(n);
@@ -72,6 +78,9 @@ class MyPanel extends JPanel implements ActionListener {
                 }
             }
         }
+        g.setColor(Color.BLACK);
+        g.setFont(new Font("TimesRoman", Font.BOLD, 30)); 
+        g.drawString(Long.toString(AStar.t1-AStar.t0), 200, 30);
         Toolkit.getDefaultToolkit().sync();
     }
 
@@ -97,15 +106,11 @@ class NodeComparator implements Comparator<Node> {
 
 class Node {
     public boolean walkable;
-    public double x;
-    public double y;
-    public double gScore;
-    public double fScore;
+    public double x, y, gScore, fScore;
 
     public Node() {
         walkable = true;
-        gScore = 9999999;
-        fScore = 9999999;
+        gScore = 999999999.99;
     }
     public Node(boolean b) {
         this();
@@ -117,7 +122,7 @@ class Node {
     }
 
     public boolean isCloseTo(double a, double b) {
-        return Math.abs(a - b) < 0.000001;
+        return Math.abs(a - b) < 0.001;
     }
 
     @Override
@@ -128,23 +133,20 @@ class Node {
 }
 
 public class AStar {
-
     public static boolean finished = false;
-    public static final int GRID_WIDTH = 50;
-    public static final int GRID_HEIGHT = 50;
+    public static final int GRID_WIDTH = 200, GRID_HEIGHT = 200;
     private static MyPanel panel;
     private static JFrame frame;
-    private static Node nodes[][] = new Node[GRID_HEIGHT][GRID_WIDTH];
+    public static Node nodes[][] = new Node[GRID_HEIGHT][GRID_WIDTH];
     public static Node end;
     public static HashMap<Node, Node> cameFrom;
-    public static final int NODE_SPACE = 10;
-    public static ArrayList<Rectangle> obstacles;
-
+    public static final int NODE_SPACE = 4;
+    public static long t0, t1;
     private static void setupGUI() {
         panel = new MyPanel(new FlowLayout());
         frame = new JFrame();
         frame.add(panel);
-        frame.setSize(556, 578);
+        frame.setSize(856, 878);// 56, 78
         frame.setResizable(false);
         frame.setTitle("A* Pathfinder by Ethan Gordon");
         frame.setLocationRelativeTo(null);
@@ -160,39 +162,28 @@ public class AStar {
 
     private static double dist(Node n1, Node n2) {
         return Math.sqrt(Math.pow(n2.x - n1.x, 2.0) + Math.pow(n2.y - n1.y, 2.0));
-        //return Math.abs(n2.x- n1.x) + Math.abs(n2.y - n1.y);
     }
 
     private static boolean isCol(Rectangle a, Rectangle b) {
-        if (a.x + a.width <= b.x || a.x >= b.x + b.width
-                || a.y + a.height <= b.y || a.y >= b.y + b.height) {
-            return false;
-        }
-        return true;
-    }
-    private static Rectangle generateRandRect(int min, int max) {
-        int sw = GRID_WIDTH*NODE_SPACE;
-        int sh = GRID_HEIGHT*NODE_SPACE;
-        int x = (int)(Math.random()*(sw-min-(2*NODE_SPACE)))+NODE_SPACE;
-        int y = (int)(Math.random()*(sh-min-(2*NODE_SPACE)))+NODE_SPACE;
-        int w = (int)(Math.random()*(sw-x-NODE_SPACE));
-        int h = (int)(Math.random()*(sh-y-NODE_SPACE));
-        if(w > max) w = max;
-        if(h > max) h = max;
-        return new Rectangle(x, y, w, h);
+        return !(a.x + a.width <= b.x || a.x >= b.x + b.width || a.y + a.height <= b.y || a.y >= b.y + b.height);
     }
     public static void main(String[] args) {
-        obstacles = new ArrayList<Rectangle>();
-        obstacles.add(new Rectangle(50, 50, 30, 30));
-        for(int i = 0; i < 100; i++) {
-            obstacles.add(generateRandRect(5, 10));
-        }
         setupGUI();
+        t0 = System.currentTimeMillis();
+        t1 = Long.MAX_VALUE;
         for (int i = 0; i < nodes.length; i++) {
             for (int j = 0; j < nodes[i].length; j++) {
                 nodes[i][j] = new Node();
                 nodes[i][j].x = j * NODE_SPACE;
                 nodes[i][j].y = i * NODE_SPACE;
+                
+                if((i == 150 && j > 5 && j <= 150) || (j == 150 && i >= 5 && i <= 150)) nodes[i][j].walkable = false; // ~ 105ms
+                /*
+                if(j == 40 && i <= 100) nodes[i][j].walkable = false;
+                if(i == 130 && j <= 100) nodes[i][j].walkable = false;
+                if(j == 100 && i > 5 && i <= 130) nodes[i][j].walkable = false;
+                if((i == 150 && j > 5 && j <= 150) || (j == 150 && i >= 0 && i <= 150)) nodes[i][j].walkable = false; // ~ 75ms
+*/
             }
         }
         end = nodes[nodes.length - 1][nodes[0].length - 1];
@@ -200,107 +191,74 @@ public class AStar {
         nodes[0][0].fScore = dist(nodes[0][0], end);
         Comparator<Node> comparator = new NodeComparator();
         PriorityQueue<Node> openSet = new PriorityQueue<Node>(10, comparator);
+        HashMap<Node, Object> closedSet = new HashMap<Node, Object>();
         openSet.add(nodes[0][0]);
         cameFrom = new HashMap<Node, Node>();
-        int loop_ctr = 0;
+        ArrayList<Node> neighbors;
+        Node leftNode = null, topLeftNode = null, topNode = null, topRightNode = null, rightNode = null, bottomRightNode = null, bottomNode = null, bottomLeftNode = null, prevNode = null;
+        boolean hasLeft, hasTop, hasRight, hasBottom;
+        int centerX, centerY, left, top, right, bottom;
+        t0 = System.currentTimeMillis();
+        t1 = Long.MAX_VALUE;
         while (openSet.size() > 0) {
-
             Node current = openSet.remove();
+            if(cameFrom.containsKey(current)) prevNode = cameFrom.get(current);
+            closedSet.put(current, null);
             if (current == end) {
+                t1 = System.currentTimeMillis();
                 System.out.println("success");
                 finished = true;
                 return;
             }
-            ArrayList<Node> neighbors = new ArrayList<Node>();
-            Node leftNode = new Node(false);
-            Node topLeftNode = new Node(false);
-            Node topNode = new Node(false);
-            Node topRightNode = new Node(false);
-            Node rightNode = new Node(false);
-            Node bottomRightNode = new Node(false);
-            Node bottomNode = new Node(false);
-            Node bottomLeftNode = new Node(false);
-            boolean hasLeft = current.x >= NODE_SPACE;
-            boolean hasTop = current.y >= NODE_SPACE;
-            boolean hasRight = current.x <= (nodes[0].length - 2) * NODE_SPACE;
-            boolean hasBottom = current.y <= (nodes.length - 2) * NODE_SPACE;
-            int centerX = (int)current.x / NODE_SPACE;
-            int centerY = (int)current.y / NODE_SPACE;
-            int left = centerX - 1;
-            int top = centerY - 1;
-            int right = centerX + 1;
-            int bottom = centerY + 1;
-
+            neighbors = new ArrayList<Node>();
+            centerX = (int)current.x / NODE_SPACE;
+            centerY = (int)current.y / NODE_SPACE;
+            left = centerX - 1;
+            top = centerY - 1;
+            right = centerX + 1;
+            bottom = centerY + 1;
+            hasLeft = left >= 0;
+            hasTop = top >= 0;
+            hasRight = right < nodes[0].length;
+            hasBottom = bottom < nodes.length;
             if(hasLeft) {
                 leftNode = nodes[centerY][left];
-                neighbors.add(leftNode);
+                if(leftNode.walkable) neighbors.add(leftNode);
             }
             if(hasLeft && hasTop) {
                 topLeftNode = nodes[top][left];
-                neighbors.add(topLeftNode);
+                if(topLeftNode.walkable) neighbors.add(topLeftNode);
             }
             if(hasTop) {
                 topNode = nodes[top][centerX];
-                neighbors.add(topNode);
+                if(topNode.walkable) neighbors.add(topNode);
             }
             if(hasTop && hasRight) {
                 topRightNode = nodes[top][right];
-                neighbors.add(topRightNode);
+                if(topRightNode.walkable) neighbors.add(topRightNode);
             }
             if(hasRight) {
                 rightNode = nodes[centerY][right];
-                neighbors.add(rightNode);
+                if(rightNode.walkable) neighbors.add(rightNode);
             }
             if(hasRight && hasBottom) {
                 bottomRightNode = nodes[bottom][right];
-                neighbors.add(bottomRightNode);
+                if(bottomRightNode.walkable) neighbors.add(bottomRightNode);
             }
             if(hasBottom) {
                 bottomNode = nodes[bottom][centerX];
-                neighbors.add(bottomNode);
+                if(bottomNode.walkable) neighbors.add(bottomNode);
             }
             if(hasBottom && hasLeft) {
                 bottomLeftNode = nodes[bottom][left];
-                neighbors.add(bottomLeftNode);
+                if(bottomLeftNode.walkable) neighbors.add(bottomLeftNode);
             }
-
-            for (Node n : neighbors) {
-                for (Rectangle o : obstacles) {
-                    if (isCol(o, n.toRect())) {
-                        n.walkable = false;
-                    }
-                }
-            }
-            if(!leftNode.walkable) {
-                topLeftNode.walkable = false;
-                bottomLeftNode.walkable = false;
-            }
-            if(!topNode.walkable) {
-                topLeftNode.walkable = false;
-                topRightNode.walkable = false;
-            }
-            if(!rightNode.walkable) {
-                topRightNode.walkable = false;
-                bottomRightNode.walkable = false;
-            }
-            if(!bottomNode.walkable) {
-                bottomLeftNode.walkable = false;
-                bottomRightNode.walkable = false;
-            }
-
-            //System.out.println("loop " + loop_ctr);
-            //loop_ctr++;
             for (int i = 0; i < neighbors.size(); i++) {
                 Node n = neighbors.get(i);
-                if (!n.walkable) {
-                    n.walkable = true;
-                    continue;
-                }
+                if(closedSet.containsKey(n)) continue;
                 double tentative_gScore = current.gScore + dist(current, n);
                 //not a better path
-                if (tentative_gScore >= n.gScore) {
-                    continue;
-                }
+                if (tentative_gScore >= n.gScore) continue;
                 //it's good. save it
                 n.gScore = tentative_gScore;
                 n.fScore = n.gScore + dist(n, end);
