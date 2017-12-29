@@ -49,8 +49,8 @@ class MyPanel extends JPanel implements ActionListener {
             Node n = AStar.end;
             g.fillRect((int) n.x + k, (int) n.y + k, AStar.NODE_SPACE, AStar.NODE_SPACE);
             path.add(n);
-            while (AStar.cameFrom.containsKey(n)) {
-                n = AStar.cameFrom.get(n);
+            while (AStar.parent.containsKey(n)) {
+                n = AStar.parent.get(n);
                 g.fillRect((int) n.x + k, (int) n.y + k, AStar.NODE_SPACE, AStar.NODE_SPACE);
                 path.add(n);
             }
@@ -133,16 +133,17 @@ class Node {
 }
 
 public class AStar {
-    public static boolean finished = false;
-    public static final int GRID_WIDTH = 200, GRID_HEIGHT = 200;
-    private static MyPanel panel;
-    private static JFrame frame;
-    public static Node nodes[][] = new Node[GRID_HEIGHT][GRID_WIDTH];
-    public static Node end;
-    public static HashMap<Node, Node> cameFrom;
-    public static final int NODE_SPACE = 4;
-    public static long t0, t1;
-    private static void setupGUI() {
+    private boolean finished = false;
+    public final int GRID_WIDTH = 200, GRID_HEIGHT = 200;
+    private MyPanel panel;
+    private JFrame frame;
+    private Node nodes[][] = new Node[GRID_HEIGHT][GRID_WIDTH];
+    
+    private Node start, end;
+    private HashMap<Node, Node> parent;
+    public final int NODE_SPACE = 4;
+    public long t0, t1;
+    private void setupGUI() {
         panel = new MyPanel(new FlowLayout());
         frame = new JFrame();
         frame.add(panel);
@@ -160,14 +161,122 @@ public class AStar {
         });
     }
 
-    private static double dist(Node n1, Node n2) {
+    private double dist(Node n1, Node n2) {
         return Math.sqrt(Math.pow(n2.x - n1.x, 2.0) + Math.pow(n2.y - n1.y, 2.0));
     }
 
-    private static boolean isCol(Rectangle a, Rectangle b) {
+    private boolean isCol(Rectangle a, Rectangle b) {
         return !(a.x + a.width <= b.x || a.x >= b.x + b.width || a.y + a.height <= b.y || a.y >= b.y + b.height);
     }
-    public static void main(String[] args) {
+    private Node[] idSuccessors(Node cur) {
+        Node successors[] = new Node[8];
+        for(int i = 0; i < successors.length; i++) {
+            successors[i] = null;
+        }
+        Node n00 = nodes[0][0];
+        int cx = (int)(cur.x - n00.x) / NODE_SPACE, cy = (int)(cur.y - n00.y) / NODE_SPACE;
+        if(parent.containsKey(cur)) {
+            Node p = parent.get(cur);
+            int dx = cx - (int)(p.x - n00.x)/NODE_SPACE, dy = cy - (int)(p.y - n00.y)/NODE_SPACE;
+            if(dx > 1) dx = 1;
+            if(dx < -1) dx = -1;
+            if(dy > 1) dy = 1;
+            if(dy < -1) dy = -1;
+            Node neighbors[] = getNeighborsPrune(cx, cy, dx, dy);
+            
+            for(int i = 0; i < neighbors.length; i++) {
+                Node jumpPt = jump(cx, cy, dx, dy);
+                successors[i] = jumpPt;
+            }
+        } else {
+            if(isWalk(cy, cx-1)) successors[0] = nodes[cy][cx-1];
+            if(isWalk(cy-1, cx-1)) successors[1] = nodes[cy-1][cx-1];
+            if(isWalk(cy-1, cx)) successors[2] = nodes[cy-1][cx];
+            if(isWalk(cy-1, cx+1)) successors[3] = nodes[cy-1][cx+1];
+            if(isWalk(cy, cx+1)) successors[4] = nodes[cy][cx+1];
+            if(isWalk(cy+1, cx+1)) successors[5] = nodes[cy+1][cx+1];
+            if(isWalk(cy+1, cx)) successors[6] = nodes[cy+1][cx];
+            if(isWalk(cy+1, cx-1)) successors[7] = nodes[cy+1][cx-1];
+        }
+        return successors;
+    }
+    private boolean isWalk(int y, int x) {
+        return y >= 0 && x >= 0 && y < nodes.length && x < nodes[0].length && nodes[y][x].walkable;
+    }
+    private Node jump(int cx, int cy, int dx, int dy) {
+        int nx = cx + dx;
+        int ny = cy + dy;
+        Node next = nodes[ny][nx];
+        if(!isWalk(ny, nx)) return null;
+        if(next.equals(end)) return next;
+        
+        if(dx != 0 && dy != 0) { //diagonal
+            //diagonal forced neighbor check
+            if((!isWalk(ny, nx-dx) && isWalk(ny+dy, nx) && isWalk(ny+dy, nx-dx)) || (!isWalk(ny, nx+dx) && isWalk(ny+dy, nx) && isWalk(ny+dy, nx+dx))) {
+                return next;
+            }
+            
+            if(jump(nx, ny, dx, 0) != null || jump(nx, ny, 0, dy) != null) {
+                return next;
+            }
+        } else {
+            // vertical/horizontal forced neighbor check
+            if( (!isWalk(ny, nx+1) && isWalk(ny+dy, nx+1)) || (!isWalk(ny, nx-1) && isWalk(ny+dy, nx-1)) || (!isWalk(ny+1, nx) && isWalk(ny+1, nx+dx)) || (!isWalk(ny-1, nx) && isWalk(ny-1, nx+dx))) {
+                return next;
+            }
+        }
+        return jump(nx, ny, dx, dy);
+    }
+    public Node[] getNeighborsPrune(int cx, int cy, int dx, int dy){
+        Node[] neighbors = new Node[5];
+        if (dx!=0 && dy!=0) { // moving diagonal
+            // normal 3 neighbors
+            if (isWalk(cy+dy, cx)) neighbors[0] = nodes[cy+dy][dx];
+            if (isWalk(cy, cx+dx)) neighbors[1] = nodes[cy][cx+dx];
+            if ((isWalk(cy+dy, cx) || isWalk(cy, cx+dx)) && isWalk(cy+dy, cx+dx)) neighbors[2] = nodes[cy+dy][cx+dx];
+            // 2 forced neighbors
+            if (!isWalk(cy, cx-dx) && isWalk(cy+dy, cx) && isWalk(cy+dy, cx-dx)) neighbors[3] = nodes[cy+dy][cx-dx];
+            if (!isWalk(cy-dy, cx) && isWalk(cy, cx+dx) && isWalk(cy-dy, cx+dx)) neighbors[4] = nodes[cy-dy][cx+dx];
+        } else {
+            if (dx == 0){ // moving vertical
+                if (isWalk(cy+dy, cx)){
+                    // normal 1 neighbor
+                    neighbors[0] = nodes[cy+dy][cx];
+                    // 2 forced neighbors
+                    if (!isWalk(cy, cx+1) && isWalk(cy+dy, cx+1)){
+                        neighbors[1] = nodes[cy+dy][dx+1];
+                    }
+                    if (!isWalk(cy, cx-1) && isWalk(cy+dy, cx-1)){
+                        neighbors[2] = nodes[cy+dy][cx-1];
+                    }
+                }
+            } else { // moving horizontal
+                if (isWalk(cy, cx+dx)){
+                    // normal 1 neighbor
+                    neighbors[0] = nodes[cy][cx+dx];
+                    // 2 forced neighbors
+                    if (!isWalk(cy+1, cx) && isWalk(cy+1, cx+dx)){
+                        neighbors[1] = nodes[cy+1][cx+dx];
+                    }
+                    if (!isWalk(cy-1, cx) && isWalk(cy-1, cx+dx)){
+                        neighbors[2] = nodes[cy-1][cx+dx];
+                    }
+                }
+            }
+        }
+        return neighbors;
+    }
+    private ArrayList<Node> reconstructPath() {
+        ArrayList<Node> path = new ArrayList<Node>();
+        Node n = end;
+        path.add(n);
+        while(parent.containsKey(n)) {
+            n = parent.get(n);
+            path.add(n);
+        }
+        return path;
+    }
+    public ArrayList<Node> findPath() {
         setupGUI();
         t0 = System.currentTimeMillis();
         t1 = Long.MAX_VALUE;
@@ -186,87 +295,47 @@ public class AStar {
 */
             }
         }
+        start = nodes[0][0];
         end = nodes[nodes.length - 1][nodes[0].length - 1];
-        nodes[0][0].gScore = 0;
-        nodes[0][0].fScore = dist(nodes[0][0], end);
+        start.gScore = 0;
+        start.fScore = dist(start, end);
         Comparator<Node> comparator = new NodeComparator();
         PriorityQueue<Node> openSet = new PriorityQueue<Node>(10, comparator);
         HashMap<Node, Object> closedSet = new HashMap<Node, Object>();
-        openSet.add(nodes[0][0]);
-        cameFrom = new HashMap<Node, Node>();
-        ArrayList<Node> neighbors;
-        Node leftNode = null, topLeftNode = null, topNode = null, topRightNode = null, rightNode = null, bottomRightNode = null, bottomNode = null, bottomLeftNode = null, prevNode = null;
-        boolean hasLeft, hasTop, hasRight, hasBottom;
-        int centerX, centerY, left, top, right, bottom;
+        openSet.add(start);
+        parent = new HashMap<Node, Node>();
+        Node successors[];
         t0 = System.currentTimeMillis();
         t1 = Long.MAX_VALUE;
         while (openSet.size() > 0) {
             Node current = openSet.remove();
-            if(cameFrom.containsKey(current)) prevNode = cameFrom.get(current);
-            closedSet.put(current, null);
             if (current == end) {
                 t1 = System.currentTimeMillis();
                 System.out.println("success");
                 finished = true;
-                return;
+                return reconstructPath();
             }
-            neighbors = new ArrayList<Node>();
-            centerX = (int)current.x / NODE_SPACE;
-            centerY = (int)current.y / NODE_SPACE;
-            left = centerX - 1;
-            top = centerY - 1;
-            right = centerX + 1;
-            bottom = centerY + 1;
-            hasLeft = left >= 0;
-            hasTop = top >= 0;
-            hasRight = right < nodes[0].length;
-            hasBottom = bottom < nodes.length;
-            if(hasLeft) {
-                leftNode = nodes[centerY][left];
-                if(leftNode.walkable) neighbors.add(leftNode);
-            }
-            if(hasLeft && hasTop) {
-                topLeftNode = nodes[top][left];
-                if(topLeftNode.walkable) neighbors.add(topLeftNode);
-            }
-            if(hasTop) {
-                topNode = nodes[top][centerX];
-                if(topNode.walkable) neighbors.add(topNode);
-            }
-            if(hasTop && hasRight) {
-                topRightNode = nodes[top][right];
-                if(topRightNode.walkable) neighbors.add(topRightNode);
-            }
-            if(hasRight) {
-                rightNode = nodes[centerY][right];
-                if(rightNode.walkable) neighbors.add(rightNode);
-            }
-            if(hasRight && hasBottom) {
-                bottomRightNode = nodes[bottom][right];
-                if(bottomRightNode.walkable) neighbors.add(bottomRightNode);
-            }
-            if(hasBottom) {
-                bottomNode = nodes[bottom][centerX];
-                if(bottomNode.walkable) neighbors.add(bottomNode);
-            }
-            if(hasBottom && hasLeft) {
-                bottomLeftNode = nodes[bottom][left];
-                if(bottomLeftNode.walkable) neighbors.add(bottomLeftNode);
-            }
-            for (int i = 0; i < neighbors.size(); i++) {
-                Node n = neighbors.get(i);
+            closedSet.put(current, null);
+            successors = idSuccessors(current);
+            for (int i = 0; i < successors.length; i++) {
+                Node n = successors[i];
                 if(closedSet.containsKey(n)) continue;
                 double tentative_gScore = current.gScore + dist(current, n);
                 //not a better path
                 if (tentative_gScore >= n.gScore) continue;
+                
                 //it's good. save it
                 n.gScore = tentative_gScore;
                 n.fScore = n.gScore + dist(n, end);
                 openSet.add(n);
-                cameFrom.put(n, current);
+                parent.put(n, current);
             }
         }
         System.out.println("failure");
         finished = true;
+    }
+    public static void main() {
+        AStar aStar = new AStar();
+        aStar.findPath();
     }
 }
