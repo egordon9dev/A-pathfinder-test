@@ -1,72 +1,10 @@
-package a.star;
+package jps;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.PriorityQueue;
-
-class MyPanel extends JPanel implements ActionListener {
-    private int x, y, pos;
-    private AStar aStar;
-    private int gridWidth, gridHeight, nodeSpace;
-    public ArrayList<Node> path;
-    public MyPanel(LayoutManager layout, AStar aStar) {
-        super(layout);
-        this.aStar = aStar;
-        gridWidth = aStar.getGridWidth();
-        gridHeight = aStar.getGridHeight();
-        nodeSpace = aStar.getNodeSpace();
-        setFocusable(true);
-        setBackground(Color.WHITE);
-        setDoubleBuffered(true);
-
-        Timer timer = new Timer(20, this);
-        timer.start();
-        
-        x = 0;
-        y = 0;
-        pos = -1;
-    }
-
-    @Override
-    public void paintComponent(Graphics g) {
-        super.paintComponent(g);
-        final int k = 25;
-        g.setColor(new Color(160, 160, 160));
-        g.fillRect(k, k, gridWidth * nodeSpace, gridHeight * nodeSpace);
-        g.setColor(new Color(100, 100, 100, 150));
-        Node nodes[][] = aStar.getNodes();
-        g.setColor(Color.WHITE);
-        for(int y = 0; y < nodes.length; y++) {
-            for(int x = 0; x < nodes[0].length; x++) {
-                Node n = nodes[y][x];
-                if(!n.walkable) {
-                    g.fillRect((int)n.x + k, (int)n.y + k, nodeSpace, nodeSpace);
-                }
-            }
-        }
-        if(path != null) {
-            g.setColor(Color.BLACK);
-            for(int i = 0; i < path.size(); i++) {
-                Node n = path.get(i);
-                g.fillRect((int) n.x + k, (int) n.y + k, nodeSpace, nodeSpace);
-            }
-        }
-        g.setColor(Color.BLACK);
-        g.setFont(new Font("TimesRoman", Font.BOLD, 30)); 
-        g.drawString(Long.toString(aStar.getDt()), 200, 30);
-        Toolkit.getDefaultToolkit().sync();
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        repaint();
-    }
-}
+import java.awt.*;
 
 class NodeComparator implements Comparator<Node> {
 
@@ -106,8 +44,7 @@ class Node {
     }
 }
 
-public class AStar {
-    private static MyPanel panel;
+public class JPS {
     private int gridWidth, gridHeight, nodeSpace;
     private Node nodes[][];
     private Node start, end;
@@ -119,7 +56,7 @@ public class AStar {
     public int getGridHeight() { return gridHeight; }
     public int getNodeSpace() { return nodeSpace; }
     public long getDt() { return t1 - t0; }
-    public AStar(int width, int height, int space) {
+    public JPS(int width, int height, int space) {
         gridWidth = width;
         gridHeight = height;
         nodeSpace = space;
@@ -139,24 +76,6 @@ public class AStar {
 
             }
         }
-        panel = new MyPanel(new FlowLayout(), this);
-    }
-    public static void setupGUI(ArrayList<Node> path) {
-        panel.path = path;
-        JFrame frame = new JFrame();
-        frame.add(panel);
-        frame.setSize(856, 878);// 56, 78
-        frame.setResizable(false);
-        frame.setTitle("A* Pathfinder by Ethan Gordon");
-        frame.setLocationRelativeTo(null);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.requestFocus();
-        EventQueue.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                frame.setVisible(true);
-            }
-        });
     }
 
     private double dist(Node n1, Node n2) {
@@ -331,11 +250,5 @@ public class AStar {
             }
         }
         return null;
-    }
-    public static void main(String args[]) {
-        AStar aStar = new AStar(200, 200, 4);
-        Node nodes[][] = aStar.getNodes();
-        ArrayList<Node> path = aStar.findPath(nodes[0][0], nodes[nodes.length-1][nodes[0].length - 1]);
-        setupGUI(path);
     }
 }
