@@ -55,37 +55,7 @@ class MyPanel extends JPanel implements ActionListener {
                 Node n = path.get(i);
                 g.fillRect((int) n.x + k, (int) n.y + k, nodeSpace, nodeSpace);
             }
-        }/*
-        if(dir != null) {
-            for(int i = 0; i < dir.size(); i++) {
-                int[] d = dir.get(i);
-                g.setFont(new Font("TimesRoman", Font.BOLD, 18));
-                g.drawString("cx: " + d[0] + "\tcy: " + d[1] + "\tdx: " + d[2] + "\tdy: " + d[3], 300, 50 + 30*i);
-            }
-        }*/
-            /*
-        if(pos == -1) {
-            pos = path.size()-1;
         }
-        double speed = 5;
-        g.setColor(new Color(150, 255, 150));
-        g.fillOval(x + k, y + k, nodeSpace, nodeSpace);
-        if(pos > 0) {
-            Node current = path.get(pos);
-            Node next = path.get(pos-1);
-
-            double xv = (next.x - current.x);
-            double yv = (next.y - current.y);
-            double mag = Math.sqrt(Math.pow(xv, 2) + Math.pow(yv, 2));
-            xv *= speed/mag;
-            yv *= speed/mag;
-            x += xv;
-            y += yv;
-
-            if(x >= next.x && y >= next.y) {
-                pos--;
-            }
-        }*/
         g.setColor(Color.BLACK);
         g.setFont(new Font("TimesRoman", Font.BOLD, 30)); 
         g.drawString(Long.toString(aStar.getDt()), 200, 30);
@@ -165,7 +135,7 @@ public class AStar {
                 if(j == 40 && i <= 100) nodes[i][j].walkable = false;
                 if(i == 130 && j <= 100) nodes[i][j].walkable = false;
                 if(j == 100 && i > 5 && i <= 130) nodes[i][j].walkable = false;
-                if((i == 150 && j > 5 && j <= 150) || (j == 150 && i >= 0 && i <= 150)) nodes[i][j].walkable = false;*/ // ~ 75ms  --> 6ms
+                if((i == 150 && j > 5 && j <= 150) || (j == 150 && i >= 0 && i <= 150)) nodes[i][j].walkable = false; */// ~ 75ms  --> 6ms
 
             }
         }
@@ -353,7 +323,6 @@ public class AStar {
                 double tentative_gScore = current.gScore + dist(current, n);
                 //not a better path
                 if (tentative_gScore >= n.gScore) continue;
-                
                 //it's good. save it
                 n.gScore = tentative_gScore;
                 n.fScore = n.gScore + dist(n, end);
