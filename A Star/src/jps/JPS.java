@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.PriorityQueue;
-import java.awt.*;
 
 class NodeComparator implements Comparator<Node> {
 
@@ -82,9 +81,6 @@ public class JPS {
         return Math.sqrt(Math.pow(n2.x - n1.x, 2.0) + Math.pow(n2.y - n1.y, 2.0));
     }
 
-    private boolean isCol(Rectangle a, Rectangle b) {
-        return !(a.x + a.width <= b.x || a.x >= b.x + b.width || a.y + a.height <= b.y || a.y >= b.y + b.height);
-    }
     private Node[] idSuccessors(Node cur) {
         Node successors[] = new Node[8];
         for(int i = 0; i < successors.length; i++) {
