@@ -87,8 +87,7 @@ public class JPS_GUI {
     }
     public static void main(String args[]) {
         JPS jps = new JPS(200, 200, 4);
-        Node nodes[][] = jps.getNodes();
-        ArrayList<Node> path = jps.findPath(nodes[0][0], nodes[nodes.length-1][nodes[0].length - 1]);
+        ArrayList<Node> path = jps.findPath(0, 0, jps.getGridWidth()-1, jps.getGridHeight()-1);
         setupGUI(path, jps);
     }
 }

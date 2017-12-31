@@ -59,6 +59,8 @@ public class JPS {
         gridWidth = width;
         gridHeight = height;
         nodeSpace = space;
+    }
+    private void reset() {
         nodes = new Node[gridHeight][gridWidth];
         for (int i = 0; i < nodes.length; i++) {
             for (int j = 0; j < nodes[i].length; j++) {
@@ -207,9 +209,10 @@ public class JPS {
         }
         return path;
     }
-    public ArrayList<Node> findPath(Node start, Node end) {
-        this.start = start;
-        this.end = end;
+    public ArrayList<Node> findPath(int startX, int startY, int endX, int endY) {
+        reset();
+        this.start = nodes[startY][startX];
+        this.end = nodes[endY][endX];
         
         t0 = System.currentTimeMillis();
         t1 = Long.MAX_VALUE;
